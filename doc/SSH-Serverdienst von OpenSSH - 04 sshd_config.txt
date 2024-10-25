@@ -1,0 +1,148 @@
+# Listen --------------------------------------------------------------------
+Port                          22
+AddressFamily                 any
+ListenAddress                 0.0.0.0
+ListenAddress                 ::
+
+# Private keys of server ----------------------------------------------------
+# Generated RSA server host key is 3072 bit
+
+HostKey                       /etc/ssh/ssh_host_rsa_key
+                              # RSA host certificate
+HostCertificate               /etc/ssh/ssh_host_rsa_key-cert.pub
+
+HostKey                       /etc/ssh/ssh_host_ecdsa_key
+                              # ECDSA host certificate
+HostCertificate               /etc/ssh/ssh_host_ecdsa_key-cert.pub
+
+HostKey                       /etc/ssh/ssh_host_ed25519_key
+                              # Ed25519 host certificate
+HostCertificate               /etc/ssh/ssh_host_ed25519_key-cert.pub
+
+# Algorithms ----------------------------------------------------------------
+# Used to fulfill the minimalstandard, ignore to trust selection of OpenSSH
+
+CASignatureAlgorithms          ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256
+
+# with AEAD, not just aes-cbc or aes-ctr
+Ciphers                       aes128-gcm@openssh.com,aes256-gcm@openssh.com
+
+HostKeyAlgorithms             ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256
+
+# "ssh -Q kex" shows no dh-group15 for DHKE 
+# but group18 with bigger size
+KexAlgorithms                 diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,curve25519-sha256,curve25519-sha256@libssh.org,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521
+
+# Use HMAC
+MACs                          hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512
+
+RequiredRSASize               3072
+
+PubkeyAcceptedAlgorithms      ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp256-cert-v01@openssh.com,ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,sk-ssh-ed25519-cert-v01@openssh.com,sk-ecdsa-sha2-nistp256-cert-v01@openssh.com,rsa-sha2-512-cert-v01@openssh.com,rsa-sha2-256-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256
+
+# Ciphers and keying --------------------------------------------------------
+# Rekey after ciphers default amount, 
+# no time based rekeying
+RekeyLimit                    default none
+
+# Logging  ------------------------------------------------------------------
+SyslogFacility                AUTH
+LogLevel                      INFO
+
+# Authentication  -----------------------------------------------------------
+LoginGraceTime                1m
+StrictModes                   yes
+
+# Only allow pubkey and pw auth combined
+AuthenticationMethods         publickey,password
+
+PubkeyAuthentication          yes
+
+# change to "none" to enforce certificate authentication
+#AuthorizedKeysFile           none
+AuthorizedKeysFile            .ssh/authorized_keys
+
+# Force PIN when using FIDO auth algo 
+# (i.e. ecdsa-sk or ed25519-sk)
+PubkeyAuthOptions             verify-required
+
+HostbasedAuthentication       no
+
+PasswordAuthentication        yes
+PermitEmptyPasswords          no
+
+KbdInteractiveAuthentication  no
+
+# insert to configure certificate authentication with
+# trusted CA and defined principals
+# Certificate Authentication ------------------------------------------------
+TrustedUserCAKeys             /etc/ssh/ca.pub
+AuthorizedPrincipalsFile      .ssh/authorized_principals
+
+# User / Group Filter -------------------------------------------------------
+AllowGroups                   sshaccess
+PermitRootLogin               no
+
+# Forwarding / Tunnel -------------------------------------------------------
+DisableForwarding             yes
+AllowAgentForwarding          no
+AllowStreamLocalForwarding    no
+AllowTcpForwarding            no
+PermitListen                  none
+PermitOpen                    none
+GatewayPorts                  no
+X11Forwarding                 no
+PermitTunnel                  no
+
+# Other settings ------------------------------------------------------------
+# Don't give user a terminal and exit session
+PermitTTY                     no
+ForceCommand                  exit
+
+PrintMotd                     no
+PrintLastLog                  no
+TCPKeepAlive                  yes
+PermitUserEnvironment         no
+PermitUserRC                  no
+
+Compression                   no 
+
+UseDNS                        no # activate if using DNS, not using DNS atm
+
+PidFile                       /var/run/sshd.pid
+MaxStartups                   10:30:100
+
+ChrootDirectory               none
+VersionAddendum               none
+Banner                        none
+
+# sftp subsystem
+Subsystem                     sftp	/usr/libexec/sftp-server
+
+# insert to configure commandline access for user "cmd"
+# User cmd ------------------------------------------------------------------
+Match User cmd
+    PermitTTY                 yes
+    ForceCommand              none
+
+# insert to configure filetransfer access over sftp for user "file"
+# in a defined directory 
+# User file -----------------------------------------------------------------
+Match User file
+    ForceCommand              internal-sftp
+    ChrootDirectory           /data/sftp
+
+# insert to configure jumphost access for user "jump"
+# and to open a TCP forwarding session to the defined destination
+# User jump -----------------------------------------------------------------
+Match User jump
+    DisableForwarding         no
+    AllowTcpForwarding        yes
+    PermitOpen                192.168.2.1:22
+
+# insert to enable agent-forwarding and configure commandline access for user "agent"
+# User agent ----------------------------------------------------------------
+Match User agent
+    AllowAgentForwarding      yes
+    PermitTTY                 yes
+    ForceCommand              none
